@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barrel Jump - Sheep Adventure</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #87CEEB 0%, #98FB98 100%);
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        
+        #gameContainer {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        #gameCanvas {
+            border: 3px solid #fff;
+            border-radius: 15px;
+            background: linear-gradient(to bottom, #87CEEB 0%, #90EE90 100%);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+        
+        #gameInfo {
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        #instructions {
+            color: white;
+            font-size: 16px;
+            margin-top: 10px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+        }
+        
+        .game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            font-size: 24px;
+            display: none;
+        }
+        
+        .restart-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: background 0.3s;
+        }
+        
+        .restart-btn:hover {
+            background: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="gameInfo">
+            Score: <span id="score">0</span> | Coins: <span id="coins">0</span> | Muddiness: <span id="muddiness">0</span>
+        </div>
+        <canvas id="gameCanvas" width="800" height="400"></canvas>
+        <div id="instructions">
+            Use A/D or Arrow Keys to move, SPACE or click to jump!
+        </div>
+        <div id="gameOver" class="game-over">
+            <h2>Game Over!</h2>
+            <p>Final Score: <span id="finalScore">0</span></p>
+            <p>Coins Collected: <span id="finalCoins">0</span></p>
+            <button class="restart-btn" onclick="restartGame()">Play Again</button>
+        </div>
+    </div>
+    
+    <script src="game.js"></script>
+</body>
+</html>
