@@ -5,8 +5,9 @@ const ctx = canvas.getContext('2d');
 // Game state
 let gameRunning = true;
 let score = 0;
-let coins = 0;
-let gameSpeed = 1.5;
+let apples = 0;
+let gameSpeed = 2;
+let gameWon = false;
 let cameraX = 0;
 
 // Sheep player object
@@ -29,15 +30,19 @@ const sheep = {
 
 // Game objects arrays
 let barrels = [];
-let coinItems = [];
+let appleItems = [];
 let clouds = [];
+let finishLine = null;
+let mamaSheep = null;
+let hearts = [];
 let puddles = [];
 
 // Timing variables
 let lastBarrelSpawn = 0;
-let lastCoinSpawn = 0;
+let lastAppleSpawn = 0;
 let lastPuddleSpawn = 0;
 let frameCount = 0;
+let victoryAnimationFrame = 0;
 
 // Input state
 let keys = {
@@ -132,36 +137,40 @@ function drawBarrel(barrel) {
     ctx.restore();
 }
 
-// Draw coin
-function drawCoin(coin) {
+// Draw apple
+function drawApple(apple) {
     ctx.save();
     
-    const screenX = coin.x - cameraX;
+    const screenX = apple.x - cameraX;
     
-    // Only draw if coin is on screen
-    if (screenX > -coin.width && screenX < canvas.width) {
-        // Coin glow effect
-        const gradient = ctx.createRadialGradient(screenX + 15, coin.y + 15, 0, screenX + 15, coin.y + 15, 20);
-        gradient.addColorStop(0, '#FFD700');
-        gradient.addColorStop(0.7, '#FFA500');
-        gradient.addColorStop(1, '#FF8C00');
+    // Only draw if apple is on screen
+    if (screenX > -apple.width && screenX < canvas.width) {
+        // Apple body (shiny red)
+        const gradient = ctx.createRadialGradient(screenX + 12, apple.y + 12, 0, screenX + 15, apple.y + 15, 15);
+        gradient.addColorStop(0, '#FF6B6B');
+        gradient.addColorStop(0.6, '#DC143C');
+        gradient.addColorStop(1, '#8B0000');
         
         ctx.fillStyle = gradient;
         ctx.beginPath();
-        ctx.arc(screenX + 15, coin.y + 15, 15, 0, 2 * Math.PI);
+        ctx.arc(screenX + 15, apple.y + 18, 12, 0, 2 * Math.PI);
         ctx.fill();
         
-        // Coin inner circle
-        ctx.fillStyle = '#FFFF00';
+        // Apple highlight (shine)
+        ctx.fillStyle = '#FFB6C1';
         ctx.beginPath();
-        ctx.arc(screenX + 15, coin.y + 15, 10, 0, 2 * Math.PI);
+        ctx.ellipse(screenX + 11, apple.y + 14, 3, 5, -0.3, 0, 2 * Math.PI);
         ctx.fill();
         
-        // Coin symbol
-        ctx.fillStyle = '#FFA500';
-        ctx.font = 'bold 16px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText('$', screenX + 15, coin.y + 20);
+        // Apple stem
+        ctx.fillStyle = '#8B4513';
+        ctx.fillRect(screenX + 14, apple.y + 6, 2, 6);
+        
+        // Apple leaf
+        ctx.fillStyle = '#228B22';
+        ctx.beginPath();
+        ctx.ellipse(screenX + 18, apple.y + 8, 4, 2, 0.5, 0, 2 * Math.PI);
+        ctx.fill();
     }
     
     ctx.restore();
@@ -366,17 +375,17 @@ function spawnBarrel() {
     }
 }
 
-// Spawn coin
-function spawnCoin() {
-    if (frameCount - lastCoinSpawn > 200 + Math.random() * 100) {
-        coinItems.push({
+// Spawn apple
+function spawnApple() {
+    if (frameCount - lastAppleSpawn > 180 + Math.random() * 120) {
+        appleItems.push({
             x: cameraX + canvas.width + Math.random() * 300,
             y: canvas.height - 120 - Math.random() * 100,
             width: 30,
             height: 30,
             collected: false
         });
-        lastCoinSpawn = frameCount;
+        lastAppleSpawn = frameCount;
     }
 }
 
@@ -404,13 +413,13 @@ function updateBarrels() {
     }
 }
 
-// Update coins
-function updateCoins() {
-    for (let i = coinItems.length - 1; i >= 0; i--) {
-        if (!coinItems[i].collected) {
-            // Remove coins that are far behind the camera
-            if (coinItems[i].x + coinItems[i].width < cameraX - 100) {
-                coinItems.splice(i, 1);
+// Update apples
+function updateApples() {
+    for (let i = appleItems.length - 1; i >= 0; i--) {
+        if (!appleItems[i].collected) {
+            // Remove apples that are far behind the camera
+            if (appleItems[i].x + appleItems[i].width < cameraX - 100) {
+                appleItems.splice(i, 1);
             }
         }
     }
@@ -444,18 +453,23 @@ function addMudSplotch() {
 
 // Check collisions
 function checkCollisions() {
-    // Check coin collisions
-    for (let i = coinItems.length - 1; i >= 0; i--) {
-        const coin = coinItems[i];
-        if (!coin.collected &&
-            sheep.x < coin.x + coin.width &&
-            sheep.x + sheep.width > coin.x &&
-            sheep.y < coin.y + coin.height &&
-            sheep.y + sheep.height > coin.y) {
-            coin.collected = true;
-            coins++;
+    // Check apple collisions
+    for (let i = appleItems.length - 1; i >= 0; i--) {
+        const apple = appleItems[i];
+        if (!apple.collected &&
+            sheep.x < apple.x + apple.width &&
+            sheep.x + sheep.width > apple.x &&
+            sheep.y < apple.y + apple.height &&
+            sheep.y + sheep.height > apple.y) {
+            apple.collected = true;
+            apples++;
             score += 50;
-            coinItems.splice(i, 1);
+            appleItems.splice(i, 1);
+            
+            // Check for victory condition
+            if (apples >= 20) {
+                victory();
+            }
         }
     }
     
@@ -474,6 +488,187 @@ function checkCollisions() {
     });
 }
 
+// Draw floating hearts
+function drawHearts() {
+    if (!gameWon || hearts.length === 0) return;
+    
+    ctx.save();
+    hearts.forEach((heart, index) => {
+        const screenX = heart.x - cameraX;
+        
+        // Only draw if heart is on screen
+        if (screenX > -50 && screenX < canvas.width + 50) {
+            ctx.fillStyle = `rgba(255, 20, 147, ${heart.opacity})`;
+            
+            // Draw heart shape
+            ctx.beginPath();
+            ctx.moveTo(screenX, heart.y + heart.size / 4);
+            ctx.bezierCurveTo(screenX, heart.y, screenX - heart.size / 2, heart.y, screenX - heart.size / 2, heart.y + heart.size / 4);
+            ctx.bezierCurveTo(screenX - heart.size / 2, heart.y + heart.size / 2, screenX, heart.y + heart.size * 0.75, screenX, heart.y + heart.size);
+            ctx.bezierCurveTo(screenX, heart.y + heart.size * 0.75, screenX + heart.size / 2, heart.y + heart.size / 2, screenX + heart.size / 2, heart.y + heart.size / 4);
+            ctx.bezierCurveTo(screenX + heart.size / 2, heart.y, screenX, heart.y, screenX, heart.y + heart.size / 4);
+            ctx.fill();
+        }
+        
+        // Update heart position and opacity
+        heart.y -= heart.speed;
+        heart.opacity -= 0.01;
+        
+        // Remove hearts that have faded out
+        if (heart.opacity <= 0) {
+            hearts.splice(index, 1);
+        }
+    });
+    ctx.restore();
+}
+
+// Spawn hearts between sheep and mama
+function spawnHeart() {
+    if (!gameWon || !mamaSheep) return;
+    
+    const midX = (sheep.x + mamaSheep.x) / 2 + (Math.random() - 0.5) * 100;
+    const midY = (sheep.y + mamaSheep.y) / 2 + (Math.random() - 0.5) * 50;
+    
+    hearts.push({
+        x: midX,
+        y: midY,
+        size: 8 + Math.random() * 8,
+        speed: 0.5 + Math.random() * 1,
+        opacity: 1
+    });
+}
+
+// Draw mama sheep
+function drawMamaSheep() {
+    if (!mamaSheep) return;
+    
+    ctx.save();
+    const screenX = mamaSheep.x - cameraX;
+    
+    // Only draw if mama sheep is on screen
+    if (screenX > -100 && screenX < canvas.width + 100) {
+        // Mama sheep body (larger and fluffier)
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        ctx.ellipse(screenX + 40, mamaSheep.y + 35, 35, 25, 0, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Mama sheep head
+        ctx.beginPath();
+        ctx.ellipse(screenX + 15, mamaSheep.y + 20, 22, 18, 0, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Mama sheep legs
+        ctx.fillStyle = '#000000';
+        for (let i = 0; i < 4; i++) {
+            ctx.fillRect(screenX + 15 + i * 15, mamaSheep.y + 55, 5, 12);
+        }
+        
+        // Mama sheep face
+        ctx.fillStyle = '#FFB6C1';
+        ctx.beginPath();
+        ctx.ellipse(screenX + 15, mamaSheep.y + 20, 15, 12, 0, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Eyes
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(screenX + 8, mamaSheep.y + 15, 4, 4);
+        ctx.fillRect(screenX + 20, mamaSheep.y + 15, 4, 4);
+        
+        // Nose
+        ctx.fillStyle = '#000000';
+        ctx.beginPath();
+        ctx.ellipse(screenX + 15, mamaSheep.y + 23, 2, 1, 0, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Flower wreath on mama sheep's head
+        const flowers = [
+            {x: screenX + 5, y: mamaSheep.y + 5, color: '#FF69B4'},
+            {x: screenX + 12, y: mamaSheep.y + 2, color: '#FFD700'},
+            {x: screenX + 20, y: mamaSheep.y + 2, color: '#FF6347'},
+            {x: screenX + 27, y: mamaSheep.y + 5, color: '#9370DB'},
+            {x: screenX + 30, y: mamaSheep.y + 12, color: '#FF1493'}
+        ];
+        
+        flowers.forEach(flower => {
+            ctx.fillStyle = flower.color;
+            ctx.beginPath();
+            ctx.arc(flower.x, flower.y, 3, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // Flower petals
+            for (let i = 0; i < 5; i++) {
+                const angle = (i * Math.PI * 2) / 5;
+                const petalX = flower.x + Math.cos(angle) * 2;
+                const petalY = flower.y + Math.sin(angle) * 2;
+                ctx.beginPath();
+                ctx.arc(petalX, petalY, 1.5, 0, 2 * Math.PI);
+                ctx.fill();
+            }
+        });
+    }
+    
+    ctx.restore();
+}
+
+// Draw finish line
+function drawFinishLine() {
+    if (!finishLine) return;
+    
+    ctx.save();
+    const screenX = finishLine.x - cameraX;
+    
+    // Only draw if finish line is on screen
+    if (screenX > -50 && screenX < canvas.width + 50) {
+        // Finish line pole
+        ctx.fillStyle = '#8B4513';
+        ctx.fillRect(screenX, finishLine.y - 100, 8, 100);
+        
+        // Finish line flag (checkered pattern)
+        const flagWidth = 60;
+        const flagHeight = 40;
+        const squareSize = 8;
+        
+        for (let row = 0; row < flagHeight / squareSize; row++) {
+            for (let col = 0; col < flagWidth / squareSize; col++) {
+                const isBlack = (row + col) % 2 === 0;
+                ctx.fillStyle = isBlack ? '#000000' : '#FFFFFF';
+                ctx.fillRect(
+                    screenX + 8 + col * squareSize,
+                    finishLine.y - 100 + row * squareSize,
+                    squareSize,
+                    squareSize
+                );
+            }
+        }
+        
+        // Flag border
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(screenX + 8, finishLine.y - 100, flagWidth, flagHeight);
+    }
+    
+    ctx.restore();
+}
+
+// Victory function
+function victory() {
+    gameWon = true;
+    // Keep gameRunning = true so sheep can continue moving
+    
+    // Create mama sheep at finish line (further ahead)
+    mamaSheep = {
+        x: sheep.x + 400,
+        y: canvas.height - 100
+    };
+    
+    // Create finish line
+    finishLine = {
+        x: sheep.x + 350,
+        y: canvas.height - 30
+    };
+}
+
 // Clean sheep (for restart)
 function cleanSheep() {
     sheep.muddiness = 0;
@@ -483,16 +678,20 @@ function cleanSheep() {
 // Restart game
 function restartGame() {
     gameRunning = true;
+    gameWon = false;
     score = 0;
-    coins = 0;
+    apples = 0;
     gameSpeed = 1.5;
     cameraX = 0;
     barrels = [];
-    coinItems = [];
+    appleItems = [];
     puddles = [];
+    mamaSheep = null;
+    finishLine = null;
+    hearts = [];
     frameCount = 0;
     lastBarrelSpawn = 0;
-    lastCoinSpawn = 0;
+    lastAppleSpawn = 0;
     lastPuddleSpawn = 0;
     
     // Reset sheep
@@ -510,14 +709,25 @@ function restartGame() {
     keys.space = false;
     
     document.getElementById('gameOver').style.display = 'none';
+    document.getElementById('victoryScreen').style.display = 'none';
     gameLoop();
 }
 
 // Update UI
 function updateUI() {
     document.getElementById('score').textContent = score;
-    document.getElementById('coins').textContent = coins;
-    document.getElementById('muddiness').textContent = sheep.muddiness;
+    document.getElementById('apples').textContent = apples;
+}
+
+// Check if sheep has reached mama
+function checkSheepReachedMama() {
+    if (gameWon && mamaSheep && !document.getElementById('victoryScreen').style.display.includes('flex')) {
+        const distance = Math.abs(sheep.x - mamaSheep.x);
+        if (distance < 100) {
+            // Show victory screen when sheep reaches mama
+            document.getElementById('victoryScreen').style.display = 'flex';
+        }
+    }
 }
 
 // Main game loop
@@ -533,27 +743,43 @@ function gameLoop() {
     
     // Update game objects
     updateSheep();
-    spawnBarrel();
-    spawnCoin();
-    spawnPuddle();
+    
+    // Only spawn new obstacles if victory hasn't been triggered
+    if (!gameWon) {
+        spawnBarrel();
+        spawnApple();
+        spawnPuddle();
+    }
+    
     updateBarrels();
-    updateCoins();
+    updateApples();
     updatePuddles();
     
     // Draw game objects
     puddles.forEach(drawPuddle);
     drawSheep();
     barrels.forEach(drawBarrel);
-    coinItems.forEach(drawCoin);
+    appleItems.forEach(drawApple);
+    drawFinishLine();
+    drawMamaSheep();
+    drawHearts();
+    
+    // Spawn hearts during victory sequence
+    if (gameWon && Math.random() < 0.1) {
+        spawnHeart();
+    }
     
     // Check collisions
     checkCollisions();
     
+    // Check if sheep has reached mama
+    checkSheepReachedMama();
+    
     // Update UI
     updateUI();
     
-    // Increase difficulty over time
-    if (frameCount % 800 === 0) {
+    // Increase difficulty over time (only if not won)
+    if (!gameWon && frameCount % 800 === 0) {
         gameSpeed += 0.15;
     }
     

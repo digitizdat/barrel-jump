@@ -77,21 +77,66 @@
         .restart-btn:hover {
             background: #45a049;
         }
+        
+        .victory-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 20%;
+            background: linear-gradient(45deg, rgba(255, 215, 0, 0.9), rgba(255, 165, 0, 0.9), rgba(255, 105, 180, 0.9), rgba(135, 206, 235, 0.9));
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+            animation: rainbow 3s infinite;
+            z-index: 10;
+            border-radius: 0 0 20px 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        @keyframes rainbow {
+            0% { background: linear-gradient(45deg, rgba(255, 215, 0, 0.9), rgba(255, 165, 0, 0.9), rgba(255, 105, 180, 0.9), rgba(135, 206, 235, 0.9)); }
+            25% { background: linear-gradient(45deg, rgba(255, 105, 180, 0.9), rgba(135, 206, 235, 0.9), rgba(255, 215, 0, 0.9), rgba(255, 165, 0, 0.9)); }
+            50% { background: linear-gradient(45deg, rgba(135, 206, 235, 0.9), rgba(255, 215, 0, 0.9), rgba(255, 165, 0, 0.9), rgba(255, 105, 180, 0.9)); }
+            75% { background: linear-gradient(45deg, rgba(255, 165, 0, 0.9), rgba(255, 105, 180, 0.9), rgba(135, 206, 235, 0.9), rgba(255, 215, 0, 0.9)); }
+            100% { background: linear-gradient(45deg, rgba(255, 215, 0, 0.9), rgba(255, 165, 0, 0.9), rgba(255, 105, 180, 0.9), rgba(135, 206, 235, 0.9)); }
+        }
+        
+        .victory-banner {
+            font-size: 48px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            animation: bounce 2s infinite;
+        }
+        
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-20px); }
+            60% { transform: translateY(-10px); }
+        }
     </style>
 </head>
 <body>
     <div id="gameContainer">
         <div id="gameInfo">
-            Score: <span id="score">0</span> | Coins: <span id="coins">0</span> | Muddiness: <span id="muddiness">0</span>
+            Score: <span id="score">0</span> | Apples: <span id="apples">0</span>
         </div>
         <canvas id="gameCanvas" width="800" height="400"></canvas>
         <div id="instructions">
-            Use A/D or Arrow Keys to move, SPACE or click to jump!
+            Press SPACE or click to jump over barrels and collect apples! Collect 100 apples to go home!
         </div>
         <div id="gameOver" class="game-over">
             <h2>Game Over!</h2>
             <p>Final Score: <span id="finalScore">0</span></p>
-            <p>Coins Collected: <span id="finalCoins">0</span></p>
+            <p>Apples Collected: <span id="finalApples">0</span></p>
+            <button class="restart-btn" onclick="restartGame()">Play Again</button>
+        </div>
+        <div id="victoryScreen" class="victory-screen">
+            <div class="victory-banner">🎉 Welcome Home! 🎉</div>
+            <div style="font-size: 24px; margin-bottom: 20px;">You collected all the apples!</div>
             <button class="restart-btn" onclick="restartGame()">Play Again</button>
         </div>
     </div>
